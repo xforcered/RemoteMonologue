@@ -1,6 +1,6 @@
 # RemoteMonologue
 
-RemoteMonologue is a Windows credential harvesting attack that enables remote user compromise by leveraging the Interactive User RunAs key and coercing NTLM authentications via DCOM. This technique allows red teamers to extract credentials without moving laterally or interacting with LSASS, making it a stealthier alternative to traditional credential dumping methods.
+RemoteMonologue is a Windows credential harvesting attack that enables remote user compromise by leveraging the Interactive User RunAs key and coercing NTLM authentications via DCOM. Read [RemoteMonologue: Weaponizing DCOM for NTLM  Authentication Coercions] for detailed information.
 
 ## **Features**  
 
@@ -71,4 +71,4 @@ Detection opportunities:
 
 
 
-
+[RemoteMonologue: Weaponizing DCOM for NTLM  Authentication Coercions]: https://www.ibm.com
