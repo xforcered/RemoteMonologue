@@ -73,4 +73,4 @@ Detection opportunities:
 
 
 
-[RemoteMonologue: Weaponizing DCOM for NTLM  Authentication Coercions]: https://www.ibm.com
+[RemoteMonologue: Weaponizing DCOM for NTLM  Authentication Coercions]: https://www.ibm.com/think/x-force/remotemonologue-weaponizing-dcom-ntlm-authentication-coercions
