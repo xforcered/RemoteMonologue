@@ -7,7 +7,7 @@ Read [RemoteMonologue: Weaponizing DCOM for NTLM  Authentication Coercions] for 
 ## **Features**  
 
 🔹 **Authentication Coercion via DCOM (`-dcom`)**  
-- Targets three DCOM objects (`ServerDataCollectorSet`, `FileSystemImage`, `UpdateSession`) to trigger NTLM authentication against a specified listener (`-auth-to`).  
+- Targets three DCOM objects (`ServerDataCollectorSet`, `FileSystemImage`, `UpdateSession`) to trigger an NTLM authentication against a specified listener (`-auth-to`).  
 
 🔹 **Credential Spraying (`-spray`)**  
 - Validate credentials across multiple systems while also capturing user credentials.  
@@ -21,7 +21,7 @@ Read [RemoteMonologue: Weaponizing DCOM for NTLM  Authentication Coercions] for 
 🔹 **User Enumeration (`-query`)**  
 - Identify users with an active session on the target system.  
 
-**Note:** Local administrator access to the target system is required.  
+**Note:** Local administrator privileges to the target system is required.  
 
 ## **Setup**
 
