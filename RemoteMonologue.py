@@ -628,7 +628,7 @@ class RemoteMonologue:
     def dcom_coerce(self):
         global text_green, text_blue, text_yellow, text_red, text_end
 
-	   # Initiate DCOM connection
+       # Initiate DCOM connection
         try:
             # Timeout checker
             stringBinding = r'ncacn_ip_tcp:%s[135]' % self.__address
@@ -689,34 +689,34 @@ class RemoteMonologue:
                
             except  (Exception) as e:
                 if str(e).find("OAUT SessionError: unknown error code: 0x0") >= 0:
-                	logging.debug("Got exepcted 0x0 SessionError")
-                	print(text_green + "[+] Coerced SMB authentication! %+35s" % self.__address + text_end)
+                    logging.debug("Got exepcted 0x0 SessionError")
+                    print(text_green + "[+] Coerced SMB authentication! %+35s" % self.__address + text_end)
 
-                	if self.__output != None:
-                	    output_file = open(self.__output, "a")
-                	    output_file.write("[+] Forced SMB authentication for Interactive User," + self.__address + "\n")
-                	    output_file.close()
+                    if self.__output != None:
+                        output_file = open(self.__output, "a")
+                        output_file.write("[+] Forced SMB authentication for Interactive User," + self.__address + "\n")
+                        output_file.close()
                 elif str(e).find("DCOM SessionError: code: 0x8000401a - CO_E_RUNAS_LOGON_FAILURE") >= 0:
                     logging.debug("Got RUNAS_LOGON_FAILURE")
                     print(text_blue + "[~] Local admin but no Interactive User %+47s" % self.__address + text_end)
                     if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[~] Local admin but no Interactive User," + self.__address + "\n")
-                    	output_file.close()
+                        output_file = open(self.__output, "a")
+                        output_file.write("[~] Local admin but no Interactive User," + self.__address + "\n")
+                        output_file.close()
                 elif str(e).find("access_denied") >= 0:
                     logging.debug("Got ACCESS_DENIED")
                     print(text_red + "[-] Access denied %+69s" % self.__address + text_end)
                     if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[-] Access denied," + self.__address + "\n")
-                    	output_file.close()
+                        output_file = open(self.__output, "a")
+                        output_file.write("[-] Access denied," + self.__address + "\n")
+                        output_file.close()
                 elif str(e).find("REGDB_E_CLASSNOTREG") >= 0:
                     logging.debug("Got REGDB_E_CLASSNOTREG")
                     print(text_blue + "[~] Local admin but DCOM class not registered %+41s" % self.__address + text_end)
                     if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[~] DCOM class not registered," + self.__address + "\n")
-                    	output_file.close()
+                        output_file = open(self.__output, "a")
+                        output_file.write("[~] DCOM class not registered," + self.__address + "\n")
+                        output_file.close()
                 else:
                     logging.error(str(e))
                 
@@ -733,36 +733,36 @@ class RemoteMonologue:
                     logging.debug("No route to host")
                     print(text_yellow + "[!] No route to host %+66s" % self.__address + text_end)
                     if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[!] No route to host," + self.__address + "\n")
-                    	output_file.close()
+                        output_file = open(self.__output, "a")
+                        output_file.write("[!] No route to host," + self.__address + "\n")
+                        output_file.close()
             elif str(e).find("Network is unreachable") >= 0:
                     logging.debug("Network is unreachable")
                     print(text_yellow + "[!] Network is unreachable %+60s" % self.__address + text_end)
                     if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[!] Network is unreachable," + self.__address + "\n")
-                    	output_file.close()                    
+                        output_file = open(self.__output, "a")
+                        output_file.write("[!] Network is unreachable," + self.__address + "\n")
+                        output_file.close()                    
             elif str(e).find("timed out") >= 0:
                     logging.debug("Connection timed out")
                     print(text_yellow + "[!] Connection timed out %+62s" % self.__address + text_end)
                     if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[!] Connection timed out," + self.__address + "\n")
-                    	output_file.close()   
+                        output_file = open(self.__output, "a")
+                        output_file.write("[!] Connection timed out," + self.__address + "\n")
+                        output_file.close()   
             elif str(e).find("Connection refused") >= 0:
                     logging.debug("Connection refused")
                     print(text_yellow + "[!] Connection refused %+64s" % self.__address + text_end)
                     if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[!] Connection refused," + self.__address + "\n")
-                    	output_file.close()                   
+                        output_file = open(self.__output, "a")
+                        output_file.write("[!] Connection refused," + self.__address + "\n")
+                        output_file.close()                   
             else:
                 logging.debug("Unkown error: " + str(e) + " for " + self.__address)
                 if self.__output != None:
-                    	output_file = open(self.__output, "a")
-                    	output_file.write("[!] Unknown error," + self.__address + "\n")
-                    	output_file.close()                 
+                        output_file = open(self.__output, "a")
+                        output_file.write("[!] Unknown error," + self.__address + "\n")
+                        output_file.close()                 
 
             
         except KeyboardInterrupt:
@@ -794,7 +794,7 @@ class AuthenticationCoercer():
 
             dispParams = DISPPARAMS(None, False)
             dispParams['rgdispidNamedArgs'] = NULL
-            dispParams['cArgs'] = 2	
+            dispParams['cArgs'] = 2    
             dispParams['cNamedArgs'] = 0
             
             arg0 = VARIANT(None, False)
