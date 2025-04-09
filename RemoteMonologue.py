@@ -12,33 +12,24 @@ import os
 import struct
 import socket
 import re
-import uuid
-import codecs
 
-from impacket import version
 from impacket.dcerpc.v5.dcom.oaut import IID_IDispatch, string_to_bin, IDispatch, DISPPARAMS, DISPATCH_PROPERTYGET, \
-    VARIANT, VARENUM, DISPATCH_METHOD, DISPATCH_PROPERTYPUT, DISPATCH_PROPERTYPUTREF, DISPID_ARRAY
-from impacket.dcerpc.v5.dcomrt import DCOMConnection, COMVERSION, OBJREF, FLAGS_OBJREF_CUSTOM, OBJREF_CUSTOM, OBJREF_HANDLER, \
+    VARIANT, VARENUM, DISPATCH_METHOD, DISPATCH_PROPERTYPUT
+from impacket.dcerpc.v5.dcomrt import DCOMConnection, OBJREF, FLAGS_OBJREF_CUSTOM, OBJREF_CUSTOM, OBJREF_HANDLER, \
     OBJREF_EXTENDED, OBJREF_STANDARD, FLAGS_OBJREF_HANDLER, FLAGS_OBJREF_STANDARD, FLAGS_OBJREF_EXTENDED, \
     IRemUnknown2, INTERFACE
-from impacket.dcerpc.v5.dtypes import NULL, LONG, MAXIMUM_ALLOWED
+from impacket.dcerpc.v5.dtypes import NULL, MAXIMUM_ALLOWED
 from impacket.examples import logger
 from impacket.examples.utils import parse_target
 from impacket.krb5.keytab import Keytab
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory
-from impacket import version
 from impacket.dcerpc.v5 import transport, rrp, scmr,lsat, lsad
 from impacket.dcerpc.v5.ndr import NULL
-from impacket.crypto import encryptSecret
 from impacket.smbconnection import SMBConnection
-from impacket.ntlm import compute_lmhash, compute_nthash
 from impacket.smb3structs import *
-from impacket.ldap import ldaptypes
-from impacket.dcerpc.v5 import transport, rrp, scmr, rpcrt
-from impacket.system_errors import ERROR_NO_MORE_ITEMS
+from impacket.dcerpc.v5 import transport, rrp, scmr
 from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.rpcrt import DCERPCException
-from impacket.dcerpc.v5 import ndr
 from impacket.dcerpc.v5.dcom import wmi
 
 text_green = '\033[92m'
