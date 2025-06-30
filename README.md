@@ -7,7 +7,7 @@ Read X-Force Red's [RemoteMonologue: Weaponizing DCOM for NTLM  Authentication C
 ## **Features**  
 
 🔹 **Authentication Coercion via DCOM (`-dcom`)**  
-- Targets three DCOM objects (`ServerDataCollectorSet`, `FileSystemImage`, `UpdateSession`) to trigger an NTLM authentication against a specified listener (`-auth-to`).  
+- Targets three DCOM objects (`ServerDataCollectorSet`, `FileSystemImage`, `MSTSWebProxy`, `UpdateSession`) to trigger an NTLM authentication against a specified listener (`-auth-to`).  
 
 🔹 **Credential Spraying (`-spray`)**  
 - Validate credentials across multiple systems while also capturing user credentials.  
